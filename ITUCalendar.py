@@ -27,7 +27,7 @@ class ITUMobilCalendarHandler:
         self.main_dtend = None
         self.donem = {}
         self.calendar = Calendar()
-        
+
         self.ituportal_token = os.environ.get("ITU_PORTAL_TOKEN")
         self.ituportal_security_id = os.environ.get("ITU_PORTAL_SECURITY_ID")
 
@@ -37,12 +37,12 @@ class ITUMobilCalendarHandler:
             "method": "GetPersonSISSchedule",
             "securityId": self.ituportal_security_id,
             "Token": self.ituportal_token,
-            "Locale": "en"
+            "Locale": "en",
         }
         response = requests.get(base_url, params=params)
         response = response.json()
         return response
-    
+
     def set_attributes(self, response=None):
         """Parse the response from the server.
 
@@ -157,7 +157,15 @@ class ITUMobilCalendarHandler:
         # Create the event.
         event = Event()
         event.add("title", lesson["DersKodu"] + lesson["DersNumarasi"])
-        event.add("description", lesson["DersKodu"] + " " + lesson["DersNumarasi"] + " (CRN: " + lesson["CRN"] + ")")
+        event.add(
+            "description",
+            lesson["DersKodu"]
+            + " "
+            + lesson["DersNumarasi"]
+            + " (CRN: "
+            + lesson["CRN"]
+            + ")",
+        )
         event.add("summary", lesson["DersAdi"])
         event.add("dtstart", self.correct_lesson_dt(lesson)["LessonDTStart"])
         event.add("dtend", self.correct_lesson_dt(lesson)["LessonDTEnd"])
