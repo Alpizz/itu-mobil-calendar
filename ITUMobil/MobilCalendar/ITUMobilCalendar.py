@@ -8,9 +8,24 @@ from datetime import timedelta
 from icalendar import Calendar, Event, vDatetime
 from enum import Enum
 
-LOCAL_TIMEZONE = "Europe/Istanbul"
+
+from ITUMobil.MobilUtils import ITUMobilUtils
+
+from ..configuration import (
+    ITU_MOBIL_API_BASE_URL,
+    ITU_MOBIL_SECURITY_ID,
+    ITU_MOBIL_DEVICE_NAME,
+    ITU_MOBIL_DEVICE_MODEL,
+    ITU_MOBIL_OS_TYPE,
+    ITU_MOBIL_LOCALE,
+    ITU_MOBIL_LOCAL_TIMEZONE,
+    CALENDAR_OUTPUT_PATHNAME
+)
 
 
+
+# TODO: Error handling
+# TODO: Check for empty values (location lat long)
 class ITUMobilCalendarHandler:
     def __init__(self):
         self.status_code: int = 0
@@ -28,18 +43,19 @@ class ITUMobilCalendarHandler:
         self.donem = {}
         self.calendar = Calendar()
 
-        self.ituportal_token = os.environ.get("ITU_PORTAL_TOKEN")
-        self.ituportal_security_id = os.environ.get("ITU_PORTAL_SECURITY_ID")
+        self.itu_mobil_token = os.environ.get("ITU_MOBIL_TOKEN")
+        self.itu_mobil_utils = ITUMobilUtils.ITUMobilUtils()
 
     def get_person_sis_schedule_from_ituportal(self):
-        base_url = "https://mobil.itu.edu.tr/v2/service/service.aspx"
+        if not self.itu_mobil_token:
+            raise ValueError("ITU Portal token is not set.")
         params = {
             "method": "GetPersonSISSchedule",
-            "securityId": self.ituportal_security_id,
-            "Token": self.ituportal_token,
-            "Locale": "en",
+            "securityId": ITU_MOBIL_SECURITY_ID,
+            "Token": self.itu_mobil_token,
+            "Locale": ITU_MOBIL_LOCALE,
         }
-        response = requests.get(base_url, params=params)
+        response = requests.get(ITU_MOBIL_API_BASE_URL, params=params)
         response = response.json()
         return response
 
@@ -74,10 +90,10 @@ class ITUMobilCalendarHandler:
             A dictionary containing the prepared response.
         """
         self.set_attributes()
-        baslangic_timestamp = self.get_timestamp_between_brackets(
+        baslangic_timestamp = self.itu_mobil_utils.get_timestamp_between_brackets(
             tarih=self.ders_baslangic_tarihi
         )
-        bitis_timestamp = self.get_timestamp_between_brackets(
+        bitis_timestamp = self.itu_mobil_utils.get_timestamp_between_brackets(
             tarih=self.ders_bitis_tarihi
         )
 
@@ -90,9 +106,6 @@ class ITUMobilCalendarHandler:
         self.get_donem_name_from_response()
         return True
 
-    def get_timestamp_between_brackets(self, tarih="()"):
-        return tarih[tarih.find("(") + 1 : tarih.find(")")]
-
     def convert_timestamp_to_ical_and_dt(self, timestamp: int):
         """Convert a timestamp to an iCalendar datetime.
 
@@ -103,7 +116,7 @@ class ITUMobilCalendarHandler:
             A datetime object.
         """
         # Convert the timestamp to a datetime object.
-        self.local_tz = pytz.timezone(zone=LOCAL_TIMEZONE)
+        self.local_tz = pytz.timezone(zone=ITU_MOBIL_LOCAL_TIMEZONE)
         dt_obj = dt.fromtimestamp(timestamp / 1000, tz=self.local_tz)
         # Convert the datetime object to an iCalendar vDatetime.
         v_dt_obj = vDatetime(dt_obj)
@@ -126,7 +139,7 @@ class ITUMobilCalendarHandler:
             f"İTÜ {self.donem['donem_adi']} {self.donem['donem_yil']-1}-{self.donem['donem_yil']} Ders Programı",
         )
         self.calendar.add("x-wr-caldesc", "ITU Mobil Calendar")
-        self.calendar.add("x-wr-timezone", LOCAL_TIMEZONE)
+        self.calendar.add("x-wr-timezone", ITU_MOBIL_LOCAL_TIMEZONE)
         # Return the calendar.
         return self.calendar
 
@@ -233,5 +246,7 @@ class ITUMobilCalendarHandler:
 
     def export_to_ics(self):
         self.create_calendar_and_add_lessons()
+        os.mkdir(path=CALENDAR_OUTPUT_PATHNAME)
         with open("output/itu-calendar.ics", "wb") as f:
             f.write(self.calendar.to_ical())
+        print(f"Calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics")
