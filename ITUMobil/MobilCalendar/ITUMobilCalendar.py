@@ -245,6 +245,6 @@ class ITUMobilCalendarHandler:
         self.create_calendar_and_add_lessons()
         if not os.path.isdir(CALENDAR_OUTPUT_PATHNAME):
             os.mkdir(path=CALENDAR_OUTPUT_PATHNAME)
-        with open("output/itu-calendar.ics", "wb") as f:
+        with open(f"{CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics", "wb") as f:
             f.write(self.calendar.to_ical())
         print(f"Calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics")
