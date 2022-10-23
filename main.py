@@ -1,9 +1,9 @@
 from ITUMobil.MobilAuth import ITUMobilAuth
 from ITUMobil.MobilCalendar import ITUMobilCalendar
 
-auth_handle = ITUMobilAuth.ITUMobilAuthHandler()
-auth_handle.login_to_itu_mobil()
 try:
+    auth_handle = ITUMobilAuth.ITUMobilAuthHandler()
+    auth_handle.login_to_itu_mobil()
     calendar_handle = ITUMobilCalendar.ITUMobilCalendarHandler()
     calendar_handle.export_to_ics()
 except Exception as e:

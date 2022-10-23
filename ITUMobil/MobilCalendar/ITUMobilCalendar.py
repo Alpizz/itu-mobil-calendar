@@ -95,10 +95,10 @@ class ITUMobilCalendarHandler:
         )
 
         self.main_dtstart = self.convert_timestamp_to_ical_and_dt(
-            timestamp=int(baslangic_timestamp)
+            timestamp=baslangic_timestamp
         )
         self.main_dtend = self.convert_timestamp_to_ical_and_dt(
-            timestamp=int(bitis_timestamp)
+            timestamp=bitis_timestamp
         )
         self.get_donem_name_from_response()
         return True
@@ -113,8 +113,7 @@ class ITUMobilCalendarHandler:
             A datetime object.
         """
         # Convert the timestamp to a datetime object.
-        self.local_tz = pytz.timezone(zone=ITU_MOBIL_LOCAL_TIMEZONE)
-        dt_obj = dt.fromtimestamp(timestamp / 1000, tz=self.local_tz)
+        dt_obj = self.itu_mobil_utils.convert_timestamp_to_datetime(timestamp)
         # Convert the datetime object to an iCalendar vDatetime.
         v_dt_obj = vDatetime(dt_obj)
         date_dict = {"dt": dt_obj, "ical": v_dt_obj.to_ical()}

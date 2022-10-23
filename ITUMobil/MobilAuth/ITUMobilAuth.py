@@ -12,6 +12,7 @@ from ..configuration import (
     ITU_MOBIL_LOCALE,
 )
 
+from ITUMobil.MobilUtils import ITUMobilUtils
 
 class ITUMobilAuthHandler:
     def __init__(self, username="", password=""):
@@ -19,6 +20,8 @@ class ITUMobilAuthHandler:
         self.password = password
         self.b64username = None
         self.b64password = None
+        
+        self.itu_mobil_utils = ITUMobilUtils.ITUMobilUtils()
 
     def login_to_itu_mobil(self):
         if not self.username:
@@ -45,6 +48,7 @@ class ITUMobilAuthHandler:
             print("Error: " + response["ResultMessage"])
         else:
             if response["Session"]["IsAuthenticated"]:
+                os.environ["ITU_MOBIL_TOKEN"] = response["Session"]["Token"]
                 print("Login successful.")
                 print("Username: " + response["Session"]["UserName"])
                 print(
@@ -54,8 +58,10 @@ class ITUMobilAuthHandler:
                     + response["Session"]["LastName"]
                 )
                 print("ITU Number: " + response["Session"]["ITUNumber"])
-                print("Session Expiration: " + response["Session"]["ValidUntil"])
-                os.environ["ITU_MOBIL_TOKEN"] = response["Session"]["Token"]
+                valid_until_raw = response["Session"]["ValidUntil"]
+                valid_until_timestamp = self.itu_mobil_utils.get_timestamp_between_brackets(tarih=valid_until_raw)
+                valid_until_date = self.itu_mobil_utils.convert_timestamp_to_datetime(timestamp=valid_until_timestamp)
+                print("Session Expiry Date: " + str(valid_until_date))
         return response
 
     def logout_from_itu_mobil(self):
