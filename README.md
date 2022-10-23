@@ -7,6 +7,9 @@ ITU Mobil Calendar is a Python library for exporting student schedule from ITU M
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install requirements.
 
 ```bash
+mkdir .venv
+python3 -m venv ./.venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
