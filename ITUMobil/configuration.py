@@ -7,3 +7,5 @@ ITU_MOBIL_LOCALE = "en"
 ITU_MOBIL_LOCAL_TIMEZONE = "Europe/Istanbul"
 
 CALENDAR_OUTPUT_PATHNAME = "output"
+
+NINOVA_HOMEWORK_BASE_URL = "https://ninova.itu.edu.tr/Sinif/{DersId}.{SinifId}/Odev/{OdevId}"
