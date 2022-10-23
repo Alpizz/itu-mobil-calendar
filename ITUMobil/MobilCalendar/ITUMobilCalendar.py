@@ -3,6 +3,7 @@ import pytz
 import uuid
 import os
 import requests
+from urllib import parse
 from datetime import datetime as dt
 from datetime import timedelta
 from icalendar import Calendar, Event, vDatetime
@@ -20,6 +21,7 @@ from ..configuration import (
     ITU_MOBIL_LOCALE,
     ITU_MOBIL_LOCAL_TIMEZONE,
     CALENDAR_OUTPUT_PATHNAME,
+    NINOVA_HOMEWORK_BASE_URL,
 )
 
 
@@ -35,21 +37,25 @@ class ITUMobilCalendarHandler:
         self.akademik_donem_kodu: str = ""
         self.akademik_takvim_tipi_id: int = 0
         self.person_ders_list = []
+        self.person_odev_list = []
 
         self.local_tz = None
         self.main_dtstart = None
         self.main_dtend = None
         self.donem = {}
-        self.calendar = Calendar()
-
-        self.itu_mobil_token = os.environ.get("ITU_MOBIL_TOKEN")
+        self.lesson_calendar = Calendar()
+        
         self.itu_mobil_utils = ITUMobilUtils.ITUMobilUtils()
+        self.itu_mobil_token = os.environ.get("ITU_MOBIL_TOKEN")
+        
+        self.include_homeworks = self.itu_mobil_utils.query_yes_no("Do you want to export homeworks?", default="no")
+        self.homework_calendar = Calendar()
 
-    def get_person_sis_schedule_from_ituportal(self):
+    def get_query_from_ituportal(self, method):
         if not self.itu_mobil_token:
             raise ValueError("ITU Portal token is not set.")
         params = {
-            "method": "GetPersonSISSchedule",
+            "method": method,
             "securityId": ITU_MOBIL_SECURITY_ID,
             "Token": self.itu_mobil_token,
             "Locale": ITU_MOBIL_LOCALE,
@@ -58,7 +64,7 @@ class ITUMobilCalendarHandler:
         response = response.json()
         return response
 
-    def set_attributes(self, response=None):
+    def set_attributes_for_lessons(self, response=None):
         """Parse the response from the server.
 
         Args:
@@ -67,8 +73,9 @@ class ITUMobilCalendarHandler:
         Returns:
             A dictionary containing the parsed response.
         """
-
-        response = self.get_person_sis_schedule_from_ituportal()
+        
+        method = "GetPersonSISSchedule"
+        response = self.get_query_from_ituportal(method)
         self.status_code = response["StatusCode"]
         self.result_code = response["ResultCode"]
         self.result_message = response["ResultMessage"]
@@ -79,14 +86,20 @@ class ITUMobilCalendarHandler:
         self.person_ders_list = response["PersonDersList"]
         # Return the response.
         return response
+    
+    def set_attributes_for_homeworks(self):
+        method = "GetNinovaSinif"
+        response = self.get_query_from_ituportal(method)
+        self.person_odev_list = response["NinovaOdevListesi"]
+        return response
 
-    def prepare_for_calendar(self):
+    def prepare_lessons_for_calendar(self):
         """Prepare the response for the calendar.
 
         Returns:
             A dictionary containing the prepared response.
         """
-        self.set_attributes()
+        self.set_attributes_for_lessons()
         baslangic_timestamp = self.itu_mobil_utils.get_timestamp_between_brackets(
             tarih=self.ders_baslangic_tarihi
         )
@@ -101,6 +114,15 @@ class ITUMobilCalendarHandler:
             timestamp=bitis_timestamp
         )
         self.get_donem_name_from_response()
+        return True
+    
+    def prepare_homeworks_for_calendar(self):
+        """_summary_.
+
+        Returns:
+            _description_.
+        """
+        self.set_attributes_for_homeworks()
         return True
 
     def convert_timestamp_to_ical_and_dt(self, timestamp: int):
@@ -120,24 +142,43 @@ class ITUMobilCalendarHandler:
         # Return the iCalendar datetime.
         return date_dict
 
-    def create_calendar(self):
+    def create_lesson_calendar(self):
         """Create the calendar.
 
         Returns:
             An iCalendar calendar object.
         """
-        self.prepare_for_calendar()
+        self.prepare_lessons_for_calendar()
         # Create the calendar.
-        self.calendar.add("prodid", "-//Alpiz//ITU Mobil Calendar//EN")
-        self.calendar.add("version", "2.0")
-        self.calendar.add(
+        self.lesson_calendar.add("prodid", "-//Alpiz//ITU Mobil Calendar//EN")
+        self.lesson_calendar.add("version", "2.0")
+        self.lesson_calendar.add(
             "x-wr-calname",
             f"İTÜ {self.donem['donem_adi']} {self.donem['donem_yil']-1}-{self.donem['donem_yil']} Ders Programı",
         )
-        self.calendar.add("x-wr-caldesc", "ITU Mobil Calendar")
-        self.calendar.add("x-wr-timezone", ITU_MOBIL_LOCAL_TIMEZONE)
+        self.lesson_calendar.add("x-wr-caldesc", "ITU Mobil Calendar")
+        self.lesson_calendar.add("x-wr-timezone", ITU_MOBIL_LOCAL_TIMEZONE)
         # Return the calendar.
-        return self.calendar
+        return self.lesson_calendar
+    
+    def create_homework_calendar(self):
+        """Create the calendar.
+
+        Returns:
+            An iCalendar calendar object.
+        """
+        self.prepare_homeworks_for_calendar()
+        # Create the calendar.
+        self.homework_calendar.add("prodid", "-//Alpiz//ITU Mobil Calendar//EN")
+        self.homework_calendar.add("version", "2.0")
+        self.homework_calendar.add(
+            "x-wr-calname",
+            f"İTÜ {self.donem['donem_adi']} {self.donem['donem_yil']-1}-{self.donem['donem_yil']} Ödev Programı",
+        )
+        self.homework_calendar.add("x-wr-caldesc", "ITU Mobil Calendar")
+        self.homework_calendar.add("x-wr-timezone", ITU_MOBIL_LOCAL_TIMEZONE)
+        # Return the calendar.
+        return self.homework_calendar
 
     def get_donem_name_from_response(self):
         class Donem(Enum):
@@ -202,14 +243,42 @@ class ITUMobilCalendarHandler:
         )
         # Return the event.
         return event
+    
+    def create_event_from_homework(self, homework):
+        event = Event()
+        event.add("title", homework["DersKodu"])
+        event.add(
+            "summary",
+            homework["OdevBaslik"]
+            + " - "
+            + homework["DersKodu"],
+        )
+        event.add("description", homework["OdevAciklama"])
+        event.add("dtstart", self.correct_homework_dt(homework)["HomeworkDTStart"])
+        event.add("dtend", self.correct_homework_dt(homework)["HomeworkDTEnd"])
+        event.add("dtstamp", dt.now())
+        event.add("uid", str(uuid.uuid4()))
+        event.add("url", self.get_homework_url(homework)["OdevURL"])
+        return event
+    
+    def get_homework_url(self, homework):
+        homework_detail_query = "?" + homework["DetailQuery"]
+        params = dict(parse.parse_qsl(parse.urlsplit(homework_detail_query).query))
+        homework["OdevURL"] = NINOVA_HOMEWORK_BASE_URL.format(**params)
+        return homework
 
-    def add_event_to_calendar(self, event):
+    def add_event_to_calendar(self, event, event_type="lesson"):
         """Add an event to the calendar.
 
         Args:
             event: An iCalendar event object.
         """
-        self.calendar.add_component(event)
+        if event_type == "lesson":
+            self.lesson_calendar.add_component(event)
+        elif event_type == "homework":
+            self.homework_calendar.add_component(event)
+        else:
+            print("Event type is not valid.")
 
     def correct_lesson_dt(self, lesson):
         """Correct the lesson's datetime.
@@ -235,15 +304,36 @@ class ITUMobilCalendarHandler:
         # Return the corrected lesson.
         return lesson
 
+    def correct_homework_dt(self, homework):
+        homework_deadline = homework["OdevTeslimBitis"]
+        hw_timestamp = self.itu_mobil_utils.get_timestamp_between_brackets(homework_deadline)
+        hw_date = self.itu_mobil_utils.convert_timestamp_to_datetime(hw_timestamp)
+        homework["HomeworkDTStart"] = hw_date - timedelta(hours=1)    
+        homework["HomeworkDTEnd"] = hw_date
+        return homework
+    
     def create_calendar_and_add_lessons(self):
-        self.create_calendar()
+        self.create_lesson_calendar()
         for lesson in self.person_ders_list:
-            self.add_event_to_calendar(self.create_event_from_lesson(lesson))
-
+            lesson_event = self.create_event_from_lesson(lesson)
+            self.add_event_to_calendar(lesson_event, event_type="lesson")
+            
+    def create_calendar_and_add_homeworks(self):
+        self.create_homework_calendar()
+        for homework in self.person_odev_list:
+            homework_event = self.create_event_from_homework(homework)
+            self.add_event_to_calendar(homework_event, event_type="homework")
+    
     def export_to_ics(self):
         self.create_calendar_and_add_lessons()
         if not os.path.isdir(CALENDAR_OUTPUT_PATHNAME):
             os.mkdir(path=CALENDAR_OUTPUT_PATHNAME)
-        with open(f"{CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics", "wb") as f:
-            f.write(self.calendar.to_ical())
-        print(f"Calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics")
+        with open(f"{CALENDAR_OUTPUT_PATHNAME}/itu-calendar-lessons.ics", "wb") as f:
+            f.write(self.lesson_calendar.to_ical())
+        print(f"Lesson calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar-lessons.ics")
+        
+        if self.include_homeworks:
+            self.create_calendar_and_add_homeworks()
+            with open(f"{CALENDAR_OUTPUT_PATHNAME}/itu-calendar-homeworks.ics", "wb") as f:
+                f.write(self.homework_calendar.to_ical())
+            print(f"Homework calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar-homeworks.ics")
