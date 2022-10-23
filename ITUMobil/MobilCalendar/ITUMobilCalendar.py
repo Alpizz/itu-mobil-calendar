@@ -19,9 +19,8 @@ from ..configuration import (
     ITU_MOBIL_OS_TYPE,
     ITU_MOBIL_LOCALE,
     ITU_MOBIL_LOCAL_TIMEZONE,
-    CALENDAR_OUTPUT_PATHNAME
+    CALENDAR_OUTPUT_PATHNAME,
 )
-
 
 
 # TODO: Error handling
@@ -68,9 +67,7 @@ class ITUMobilCalendarHandler:
         Returns:
             A dictionary containing the parsed response.
         """
-        # Parse the response into a dictionary.
-        # with open("response.json", "r") as f:
-        #     response_dict = json.load(f)
+
         response = self.get_person_sis_schedule_from_ituportal()
         self.status_code = response["StatusCode"]
         self.result_code = response["ResultCode"]
@@ -246,7 +243,8 @@ class ITUMobilCalendarHandler:
 
     def export_to_ics(self):
         self.create_calendar_and_add_lessons()
-        os.mkdir(path=CALENDAR_OUTPUT_PATHNAME)
+        if not os.path.isdir(CALENDAR_OUTPUT_PATHNAME):
+            os.mkdir(path=CALENDAR_OUTPUT_PATHNAME)
         with open("output/itu-calendar.ics", "wb") as f:
             f.write(self.calendar.to_ical())
         print(f"Calendar exported to {CALENDAR_OUTPUT_PATHNAME}/itu-calendar.ics")

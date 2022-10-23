@@ -1,11 +1,12 @@
 from ITUMobil.MobilAuth import ITUMobilAuth
 from ITUMobil.MobilCalendar import ITUMobilCalendar
-handle = ITUMobilAuth.ITUMobilAuthHandler()
-handle.login_to_itu_mobil()
+
+auth_handle = ITUMobilAuth.ITUMobilAuthHandler()
+auth_handle.login_to_itu_mobil()
 try:
-    calhandler = ITUMobilCalendar.ITUMobilCalendarHandler()
-    calhandler.export_to_ics()
-except:
-    print("Error occured.")
+    calendar_handle = ITUMobilCalendar.ITUMobilCalendarHandler()
+    calendar_handle.export_to_ics()
+except Exception as e:
+    print("Error occured.", e)
 finally:
-    handle.logout_from_itu_mobil()
+    auth_handle.logout_from_itu_mobil()

@@ -47,7 +47,13 @@ class ITUMobilAuthHandler:
             if response["Session"]["IsAuthenticated"]:
                 print("Login successful.")
                 print("Username: " + response["Session"]["UserName"])
-                print("Mail: " + response["Session"]["ITUMail"])
+                print(
+                    "Name and Surname: "
+                    + response["Session"]["FirstName"]
+                    + " "
+                    + response["Session"]["LastName"]
+                )
+                print("ITU Number: " + response["Session"]["ITUNumber"])
                 print("Session Expiration: " + response["Session"]["ValidUntil"])
                 os.environ["ITU_MOBIL_TOKEN"] = response["Session"]["Token"]
         return response
