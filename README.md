@@ -18,3 +18,5 @@ pip install -r requirements.txt
 ```bash
 python3 main.py
 ```
+
+The `.ics` files will be created at `output` folder.
