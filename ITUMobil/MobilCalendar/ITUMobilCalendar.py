@@ -77,6 +77,8 @@ class ITUMobilCalendarHandler:
         method = "GetPersonSISSchedule"
         response = self.get_query_from_ituportal(method)
         self.status_code = response["StatusCode"]
+        if self.status_code != 0:
+            raise ValueError("Status code is not 0.")
         self.result_code = response["ResultCode"]
         self.result_message = response["ResultMessage"]
         self.ders_baslangic_tarihi = response["DersBaslangicTarihi"]
@@ -257,6 +259,7 @@ class ITUMobilCalendarHandler:
         event.add("dtstart", self.correct_homework_dt(homework)["HomeworkDTStart"])
         event.add("dtend", self.correct_homework_dt(homework)["HomeworkDTEnd"])
         event.add("dtstamp", dt.now())
+        event.add("location", f'{homework["CRN"]} - {homework["DersAdi"]}')
         event.add("uid", str(uuid.uuid4()))
         event.add("url", self.get_homework_url(homework)["OdevURL"])
         return event

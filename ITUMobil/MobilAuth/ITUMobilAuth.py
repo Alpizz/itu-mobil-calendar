@@ -15,15 +15,39 @@ from ..configuration import (
 from ITUMobil.MobilUtils import ITUMobilUtils
 
 class ITUMobilAuthHandler:
+    """
+        This class is used to get the session token of the user, and
+        saves it to the OS environment with variable ITU_MOBIL_TOKEN.
+    """
     def __init__(self, username="", password=""):
+        """
+        Initialize authentication handler and utils.
+
+        Args:
+            username (str, optional): Raw username input. Defaults to "".
+            password (str, optional): Raw password input. Defaults to "".
+        """        
         self.username = username
         self.password = password
         self.b64username = None
         self.b64password = None
         
         self.itu_mobil_utils = ITUMobilUtils.ITUMobilUtils()
+        self.login_method = "LoginSessionEncoded"
+        self.logout_method = "LogoutSession"
+
 
     def login_to_itu_mobil(self):
+        """
+        Login to ITU Mobil with the given credentials. Encodes raw username and password
+        to base64 and sends them to ITU Mobil login.
+        
+        If login becomes successful, acquires session token and saves it to the OS 
+        environment with variable ITU_MOBIL_TOKEN.
+
+        Returns:
+            _type_: _description_
+        """        
         if not self.username:
             self.username = input("Username: ")
         if not self.password:
@@ -32,7 +56,7 @@ class ITUMobilAuthHandler:
         self.b64password = base64.b64encode(self.password.encode("utf-8"))
 
         params = {
-            "method": "LoginSessionEncoded",
+            "method": self.login_method,
             "UserName": self.b64username,
             "Password": self.b64password,
             "SecurityId": ITU_MOBIL_SECURITY_ID,
@@ -66,7 +90,7 @@ class ITUMobilAuthHandler:
 
     def logout_from_itu_mobil(self):
         params = {
-            "method": "LogoutSession",
+            "method": self.logout_method,
             "Token": os.environ.get("ITU_MOBIL_TOKEN"),
             "SecurityId": ITU_MOBIL_SECURITY_ID,
         }
